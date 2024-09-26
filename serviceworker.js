@@ -40,17 +40,20 @@ self.addEventListener("activate", (event) => {
 // Fetch event
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    (async () => {
+      const cachedResponse = await caches.match(event.request);
       if (cachedResponse) {
         return cachedResponse;
       }
+      try{
+        const networkResponse = await fetch(event.request); 
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(event.request, networkResponse.clone());  
+        return networkResponse;
 
-      return fetch(event.request).then((networkResponse) => {
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone()); // Update cache with new response
-          return networkResponse;
-        });
-      });
-    })
+      }catch(error){
+        console.error("Fetch Failed, returning offline page:", error);
+      }
+    })()
   );
 });
